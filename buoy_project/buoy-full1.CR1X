@@ -1,0 +1,131 @@
+'CR1000X Series
+'Created by Short Cut (4.4)
+
+'Declare Variables and Units
+Dim NMEASent(2) As String * 100
+Public BattV
+Public PTemp_C
+Public Humidity
+Public Temperature
+Public PAR
+Public Pressure
+Public GPSData(15)
+Public pwmdat(2) 'For arduino
+
+'GPS
+Alias GPSData(1)=Latitude_A
+Alias GPSData(2)=Latitude_B
+Alias GPSData(3)=Longitude_A
+Alias GPSData(4)=Longitude_B
+Alias GPSData(5)=Speed
+Alias GPSData(6)=Course
+Alias GPSData(7)=MagVar
+Alias GPSData(8)=FixQual
+Alias GPSData(9)=NumSats
+Alias GPSData(10)=Altitude
+Alias GPSData(11)=PPS
+Alias GPSData(12)=SecSinceGPRMC
+Alias GPSData(13)=GPSReady
+Alias GPSData(14)=MaxClockChange
+Alias GPSData(15)=NumClockChange
+
+'Arduino
+Alias pwmdat(1)= period
+Alias pwmdat(2)= t_on
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units Humidity=mV
+Units Temperature=mV
+Units PAR=mV
+Units Pressure=mV
+Units Latitude_A=degrees
+Units Latitude_B=minutes
+Units Longitude_A=degrees
+Units Longitude_B=minutes
+Units Speed=knots
+Units Course=degrees
+Units MagVar=degrees
+Units FixQual=code
+Units NumSats=count
+Units Altitude=meters
+Units PPS=microseconds
+Units SecSinceGPRMC=seconds
+Units GPSReady=count
+Units MaxClockChange=milliseconds
+Units NumClockChange=count
+
+'Define Data Tables
+DataTable(BuoyData,True,-1)
+	DataInterval(0,1,Sec,10)
+	Sample(1,BattV,FP2)
+	Sample(1,PTemp_C,FP2)
+	Sample(1,Humidity,FP2)
+  Sample(1,Temperature,FP2)
+  Sample(1,PAR,FP2)
+  Sample(1,Pressure,FP2)
+	Sample(1,Latitude_A,FP2)
+	Sample(1,Latitude_B,FP2)
+	Sample(1,Longitude_A,FP2)
+	Sample(1,Longitude_B,FP2)
+	Sample(1,Speed,FP2)
+	Sample(1,Course,FP2)
+	Sample(1,MagVar,FP2)
+	Sample(1,FixQual,FP2)
+	Sample(1,NumSats,FP2)
+	Sample(1,Altitude,FP2)
+	Sample(1,PPS,FP2)
+	Sample(1,SecSinceGPRMC,FP2)
+	Sample(1,GPSReady,FP2)
+	Sample(1,MaxClockChange,FP2)
+	Sample(1,NumClockChange,FP2)
+	Sample(1,period,FP2)
+	Sample(1,t_on,FP2)
+EndTable
+
+DataTable(PWMData,True,-1)
+	DataInterval(0,200,msec,10)
+	Sample(1,period,FP2)
+	Sample(1,t_on,FP2)
+EndTable
+
+'Main Program
+BeginProg
+	'Configure ComC5 for 3.3V for the GPS16X-HVS GPS Receiver
+	PortPairConfig(C5,2)
+	'Switched 12V output
+	SW12(SW12_1,1)
+	'Switched voltage
+	SWVX(VX1,1,1) 'Humidity/Temperature sensor
+	SWVX(VX2,1,1) 'Pressure sensor
+	SWVX(VX4,1,1) 'Pressure sensor	
+  
+  'Main Scan
+	Scan(200,msec,1,0)
+		'Default CR1000X Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+    'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,60)
+		'Generic Single-Ended Voltage measurements 'Humidity'
+		VoltSe(Humidity,1,mV5000,1,True,500,60,1,0)
+		'Generic Single-Ended Voltage measurements 'Temperature'
+		VoltSe(Temperature,1,mV5000,3,True,500,60,1,0)
+		'Generic Single-Ended Voltage measurements 'PAR'
+		VoltSe(PAR,1,mV5000,7,True,500,60,1,0)
+		'Generic Single-Ended Voltage measurements 'Pressure'
+		VoltSe(Pressure,1,mV5000,5,True,500,60,1,0)
+		'GPS16X-HVS GPS Receiver measurements 'Latitude_A', 'Latitude_B', 'Longitude_A', 'Longitude_B', 'Speed', 'Course',
+		'MagVar', 'FixQual', 'NumSats', 'Altitude', 'PPS', 'SecSinceGPRMC', 'GPSReady', 'MaxClockChange', and 'NumClockChange'
+		'The datalogger clock will be synchronized to GPS time.
+		GPS(GPSData(),-ComC5,0*3600,500,NMEASent())
+		
+    'PWM
+    'Measure period on channel 1, and time till falling edge on channel 2
+    'NOTE: the sensor is connected to both C1 and C2 with a link
+    TimerInput(pwmdat(),C1,00000001,00000031,0,mSec)
+
+		'Call Data Tables and Store Data
+		CallTable BuoyData
+		CallTable PWMData
+	NextScan
+EndProg
